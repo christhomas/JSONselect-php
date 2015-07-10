@@ -2,3 +2,6 @@ JSONSelectTests/
 assets/
 protected/runtime/
 themes/classic/views/
+/.settings/
+/.buildpath
+/.project
