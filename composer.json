@@ -1,0 +1,13 @@
+{
+    "name": "amstudios/jsonselect_php",
+    "description": "Antimatter Studios: JSONSelect for PHP",
+    "license": "GPLv3",
+    "type": "project",
+    "authors": [
+    	{
+    		"name": "Christopher Thomas",
+    		"email": "chris.thomas@antimatter-studios.com",
+    		"homepage": "http://antimatter-studios.com"
+    	}
+    ]
+}
