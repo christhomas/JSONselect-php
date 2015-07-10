@@ -634,4 +634,3 @@ class JSONSelect
         return $this->collect($this->sel[1], $obj);
     }
 }
-?>
