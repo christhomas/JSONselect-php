@@ -10,12 +10,18 @@ class JSONSelect
 {
 	const VALUE_PLACEHOLDER = "__X__special_value__X__";
 
-    protected $sel;
+	protected $document;
 
-    public function __construct($expr)
+    public function __construct($document)
    	{
-        $this->sel = $this->parse($expr);
-    }
+   		if(!$document || (!is_string($document) && !is_array($document))){
+   			$this->document = "{}";
+   		}else if(is_string($document)){
+   			$this->document = json_decode($document);
+   		}else{
+   			$this->document = $document;
+   		}
+   	}
 
 	// emitted error codes.
     protected $errorCodes = array(
@@ -416,8 +422,8 @@ class JSONSelect
             if ($l === null) {
                 break;
             } else if ($l[1] === $this->toks['ide']) {
-                if ($s['id']) $this->te("nmi", $l[1]);
-                $s[ 'id'] = $l[2];
+                if (!empty($s['id'])) $this->te("nmi", $l[1]);
+                $s['id'] = $l[2];
             } else if ($l[1] === $this->toks['psc']) {
                 if ($s['pc'] || $s['pf']) $this->te("mpc", $l[1]);
                 // collapse first-child and last-child into nth-child expressions
@@ -560,7 +566,7 @@ class JSONSelect
         }
 
         // should we repeat this selector for descendants?
-        if ($sel[0] !== ">" && $sel[0]['pc'] !== ":root") $sels []= $sel;
+        if ($sel[0] !== ">" || (array_key_exists("pc",$sel[0]) && $sel[0]['pc'] !== ":root")) $sels []= $sel;
 
         if ($m) {
             // is there a fragment that we should pass down?
@@ -624,13 +630,10 @@ class JSONSelect
         return $collector;
     }
 
-    public function match($obj)
+    public function find($selector)
     {
-        return $this->collect($this->sel[1], $obj);
-    }
+   		$selector = $this->parse($selector);
 
-    public function find($obj)
-    {
-        return $this->collect($this->sel[1], $obj);
+        return $this->collect($selector[1], $this->document);
     }
 }
