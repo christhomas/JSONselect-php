@@ -10,7 +10,7 @@ class JSONSelect
 {
 	const VALUE_PLACEHOLDER = "__X__special_value__X__";
 
-    protected var $sel;
+    protected $sel;
 
     public function __construct($expr)
    	{
