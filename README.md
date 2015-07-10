@@ -8,7 +8,7 @@ This implementation is heavily based on https://github.com/lloyd/JSONSelect/blob
 
 My Port is not compatible with the port here: https://github.com/observu/JSONselect-php
 
-There is one critical difference in that I've done the following:
+There are some critical differences in that I've done the following:
 - Upgraded the code to PHP5
 - Added protected/public access to members
 - Code Cleanups
