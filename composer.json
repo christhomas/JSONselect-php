@@ -9,5 +9,9 @@
     		"email": "chris.thomas@antimatter-studios.com",
     		"homepage": "http://antimatter-studios.com"
     	}
-    ]
+    ],
+
+    "autoload": {
+    	"files": ["src/jsonselect.php"]
+    }
 }
