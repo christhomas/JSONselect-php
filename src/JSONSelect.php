@@ -1,37 +1,61 @@
 <?php
-namespace JSONSelect;
-
 /**
  * Implements JSONSelectors as described on http://jsonselect.org/
  *
- * Changelog:
- * - 16/7/2015: chris.thomas@antimatter-studios.com
- *   Modified heavily to fix a few issues that make it easier to work with
- *   Implements array access and aggregators, meaning results from find() can be used in foreach loops
- *   The constructor takes the document, not the selector, meaning you can construct a document orientated method of working
- *   removed match(), changed to find(), similar to jquery
- *   find() now returns a JSONSelect object, meaning you can do similar operators to jquery, such as find elements and then use the results to find() more elements from those results
- *   changed the selectors so you just use "Name" instead of ".Name" then internally rewrite the selector, this makes a lot more sense than thinking everything is a class and putting that onto the programmer, who might not understand why we're selecting "elements" as "classes".
+ * Changelog 16/7/2015: chris.thomas@antimatter-studios.com
+ * -	Modified heavily to fix a few issues that make it easier to work with
+ * -	Implements array access and countable, etc, meaning results from find() can be used in foreach loops
+ * -	The constructor takes the document, not the selector, meaning you can construct a document orientated method of working
+ * -	removed match(), changed to find(), similar to jquery
+ * -	find() now returns a JSONSelect object, meaning you can do similar operators to jquery, such as find elements and then use the results to find() more elements from those results
+ * -	changed the selectors so you just use "Name" instead of ".Name" then internally rewrite the selector, this makes a lot more sense than thinking everything is a class and putting that onto the programmer, who might not understand why we're selecting "elements" as "classes".
+ * -	renamed the class to JSONSelect to match the name of the class name (a bit more of a standard approach)
+ * -	removed the namespace, I don't like it :)
+ * -	allow the selector to be passed through on the constructor, needing changes to the find() method that sets internal data based on what was selected, allowing us to override the final document stored
+ * -	implement better code for the offsetXXX methods
+ * -	implement first() to obtain the first item in a document
+ * -	implement text() to obtain all the results as text, it'll convert non-scalar values to gettype strings and only return unique values, also if there is only one value, it'll return it directly, not an array of one value
  *
  * */
 
-class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
+class JSONSelect implements Iterator, ArrayAccess, Countable
 {
 	const VALUE_PLACEHOLDER = "__X__special_value__X__";
 
 	protected $document;
-
-    public function __construct($document)
+	protected $selector;
+	protected $collection;
+	protected $keys;
+	protected $position = 0;
+	
+    public function __construct($document=null,$selector=null)
    	{
-   		if(!$document || (!is_string($document) && !is_array($document))){
-   			$document = "{}";
+   		if(!$document && !is_string($document) && !is_array($document) && !is_object($document)){
+   			$document = '{}';
    		}else if(is_string($document) && file_exists($document)){
    			$document = file_get_contents($document);
    		}else if(is_array($document)){
    			$document = json_encode($document);
+   		}else if(is_object($document)){
+   			$document = json_encode((array)$document);
    		}
-
+   		
    		$this->document = json_decode($document);
+   		
+   		if($selector && !empty($this->document)){
+   			$this->find($selector);
+   			if(!empty($this->collection)){ 
+   				$this->document = $this->collection;
+   			}
+   		}
+   		
+   		$this->setKeys();
+   	}
+   	
+   	protected function setKeys()
+   	{
+   		$this->keys = array_keys((array)$this->document);
+   		$this->position = 0;
    	}
 
 	// emitted error codes.
@@ -518,11 +542,12 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
 
     protected function mytypeof($o)
     {
-        if ($o === null) return "null";
-        if (is_object($o)) return "object";
+        if($o === null) return "null";
+        if(is_object($o)) return "object";
         if(is_array($o)) return "array";
         if(is_numeric($o)) return "number";
         if($o===true || $o==false) return "boolean";
+        
         return "string";
     }
 
@@ -655,6 +680,8 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
     	} else {
     		$this->document->$offset = $value;
     	}
+    	
+    	$this->setKeys();
     }
     
     public function offsetExists($offset)
@@ -669,23 +696,87 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
     
     public function offsetGet($offset)
     {
-    	return new JSONSelect(isset($this->document->$offset) ? $this->document->$offset : null);
+    	$d = $this->document;
+    	
+    	$current = null;
+    	
+    	if($d instanceof stdClass){
+    		$current = isset($d->$offset) ? $d->offset : null;
+    	}else if(is_array($d)){
+    		$current = isset($d[$offset]) ? $d[$offset] : null;
+    	}
+    	
+    	return is_scalar($current) ? $current : new JSONSelect($current);
+    }
+    
+    public function first()
+    {
+    	return $this[$this->keys[0]];
+    }
+    
+    public function text()
+    {
+    	$results = array();
+    	
+    	if(!empty($this->document)){
+    		foreach($this->document as $key=>$value){
+    			$results[$key] = is_scalar($value) ? $value : gettype($value);
+    		}
+    	}
+    	
+    	$results = array_unique($results);
+    	
+    	return count($results) == 1 ? current($results) : $results;
     }
     
     public function count()
     {
-    	return $this->document->length;
+    	return count($this->keys);
     }
     
-    public function getIterator()
+    function rewind()
     {
-    	return new ArrayIterator($this->document);
+    	$this->position = 0;
+    }
+    
+    function current()
+    {
+    	$k = $this->key();
+    	
+    	$current = $this->document instanceof stdClass ? $this->document->{$k} : $this->document[$k];
+    	
+    	return new JSONSelect($current);
+    }
+    
+    function key()
+    {
+    	return $this->keys[$this->position];
+    }
+    
+    function next()
+    {
+    	++$this->position;
+    }
+    
+    function valid()
+    {
+    	return array_key_exists($this->position,$this->keys);
     }
 
     public function find($selector)
     {
-   		$selector = $this->parse($selector);
-
-        return new JSONSelect($this->collect($selector[1], $this->document));
+    	if(empty($selector)){
+    		$this->collection = null;
+    	}else{
+   			$this->selector		=	$this->parse($selector);
+   			$this->collection	=	$this->collect($this->selector[1], $this->document);
+   			
+   			//	Not sure whether this is good to do all the time, or just in specific circumstances
+   			if(count($this->collection) == 1 && !is_scalar($this->collection[0])){
+   				$this->collection = current($this->collection);
+   			}
+    	}
+    	
+        return new JSONSelect($this->collection);
     }
 }
