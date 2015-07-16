@@ -2,11 +2,18 @@
 /**
  * Implements JSONSelectors as described on http://jsonselect.org/
  *
- *
+ * Changelog:
+ * - 16/7/2015: chris.thomas@antimatter-studios.com
+ *   Modified heavily to fix a few issues that make it easier to work with
+ *   Implements array access and aggregators, meaning results from find() can be used in foreach loops
+ *   The constructor takes the document, not the selector, meaning you can construct a document orientated method of working
+ *   removed match(), changed to find(), similar to jquery
+ *   find() now returns a JSONSelect object, meaning you can do similar operators to jquery, such as find elements and then use the results to find() more elements from those results
+ *   changed the selectors so you just use "Name" instead of ".Name" then internally rewrite the selector, this makes a lot more sense than thinking everything is a class and putting that onto the programmer, who might not understand why we're selecting "elements" as "classes".
  *
  * */
 
-class JSONSelect
+class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
 {
 	const VALUE_PLACEHOLDER = "__X__special_value__X__";
 
@@ -15,12 +22,14 @@ class JSONSelect
     public function __construct($document)
    	{
    		if(!$document || (!is_string($document) && !is_array($document))){
-   			$this->document = "{}";
-   		}else if(is_string($document)){
-   			$this->document = json_decode($document);
-   		}else{
-   			$this->document = $document;
+   			$document = "{}";
+   		}else if(is_string($document) && file_exists($document)){
+   			$document = file_get_contents($document);
+   		}else if(is_array($document)){
+   			$document = json_encode($document);
    		}
+
+   		$this->document = json_decode($document);
    	}
 
 	// emitted error codes.
@@ -276,6 +285,8 @@ class JSONSelect
     protected function parse($str, $off=0, $nested=null, $hints=null)
     {
         if (!$nested) $hints = array();
+        
+        $str = implode(" ",array_map(function($str){ return ".".trim($str,"."); },explode(" ",$str)));
 
         $a = array();
         $am=null;
@@ -629,11 +640,46 @@ class JSONSelect
 
         return $collector;
     }
+    
+    public function offsetSet($offset, $value)
+    {
+    	if (is_null($offset)) {
+    		$c = count((array)$this->document);
+    		$this->document->{$c} = $value;
+    	} else {
+    		$this->document->$offset = $value;
+    	}
+    }
+    
+    public function offsetExists($offset)
+    {
+    	return isset($this->document->$offset);
+    }
+    
+    public function offsetUnset($offset)
+    {
+    	unset($this->document->$offset);
+    }
+    
+    public function offsetGet($offset)
+    {
+    	return new JSONSelect(isset($this->document->$offset) ? $this->document->$offset : null);
+    }
+    
+    public function count()
+    {
+    	return $this->document->length;
+    }
+    
+    public function getIterator()
+    {
+    	return new ArrayIterator($this->document);
+    }
 
     public function find($selector)
     {
    		$selector = $this->parse($selector);
 
-        return $this->collect($selector[1], $this->document);
+        return new JSONSelect($this->collect($selector[1], $this->document));
     }
 }
