@@ -726,7 +726,7 @@ class JSONSelect implements Iterator, ArrayAccess, Countable
     	
     	$results = array_unique($results);
     	
-    	return count($results) == 1 ? current($results) : $results;
+    	return count($results) == 1 ? current($results) : (empty($results) ? "" : $results);
     }
     
     public function count()
