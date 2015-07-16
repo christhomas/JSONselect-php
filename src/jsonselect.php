@@ -1,4 +1,6 @@
 <?php
+namespace JSONSelect;
+
 /**
  * Implements JSONSelectors as described on http://jsonselect.org/
  *
@@ -175,7 +177,7 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
             $off += strlen($m[0]);
             //$v = $m[1] || $m[2] || $m[3] || $m[5] || $m[6];
             foreach(array(1,2,3,5,6) as $k){
-                if(strlen($m[$k])>0){
+                if(isset($m[$k]) && strlen($m[$k])>0){
                     $v = $m[$k];
                     break;
                 }
@@ -436,7 +438,9 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
                 if (!empty($s['id'])) $this->te("nmi", $l[1]);
                 $s['id'] = $l[2];
             } else if ($l[1] === $this->toks['psc']) {
-                if ($s['pc'] || $s['pf']) $this->te("mpc", $l[1]);
+				if ((isset($s['pc']) && $s['pc']) || (isset($s['pf']) && $s['pf'])) {
+					$this->te("mpc", $l[1]);
+				}
                 // collapse first-child and last-child into nth-child expressions
                 if ($l[2] === ":first-child") {
                     $s['pf'] = ":nth-child";
@@ -485,10 +489,10 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
 
 
                     if (!$m) $this->te("mepf", $str);
-                    if (strlen($m[5])>0) {
+                    if (isset($m[5]) && strlen($m[5])>0) {
                         $s['a'] = 2;
                         $s['b'] = ($m[5] === "odd") ? 1 : 0;
-                    } else if (strlen($m[6])>0) {
+                    } else if (isset($m[6]) && strlen($m[6])>0) {
                         $s['a'] = 0;
                         $s['b'] = (int)$m[6];
                     } else {
@@ -577,7 +581,9 @@ class JSONSelect implements ArrayAccess, IteratorAggregate, Countable
         }
 
         // should we repeat this selector for descendants?
-        if ($sel[0] !== ">" || (array_key_exists("pc",$sel[0]) && $sel[0]['pc'] !== ":root")) $sels []= $sel;
+        if ($sel[0] !== ">" && (!isset($sel[0]['pc']) || $sel[0]['pc'] !== ":root")) {
+			$sels []= $sel;
+		}
 
         if ($m) {
             // is there a fragment that we should pass down?

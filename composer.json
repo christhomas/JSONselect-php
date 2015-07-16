@@ -12,6 +12,6 @@
     ],
 
     "autoload": {
-    	"files": ["src/jsonselect.php"]
+    	"psr-0": { "JSONSelect": "src/" }
     }
 }
