@@ -82,7 +82,7 @@ class JSONSelect implements Iterator, ArrayAccess, Countable
     // throw an error message
     protected function te($ec, $context)
     {
-		throw new Exception($this->errorCodes[$ec] . (" in '" . $context . "'"));
+		throw new JSONSelect_Exception($this->errorCodes[$ec] . (" in '" . $context . "'"));
     }
 
     // THE LEXER
